@@ -54,6 +54,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -69,20 +71,26 @@ public class MainActivity extends AppCompatActivity {
     TextView r2;
     TextView r3;
     TextView r4;
+    TextView r5;
+    TextView r6;
     Button viewRecord;
+    Button refresh;
     RadioButton purchase;
     RadioButton sale;
     Button update;
     Button addRecord;
-    Button stockcount;
     TextView quantity;
     ProgressDialog progressBar;
     ProgressBar pb;
     int row;
+    static int  count = 0 ;
     Integer totalTypesOfBooks;
     TextView totalsc;
-    String baseURL = "https://script.google.com/macros/s/AKfycbwJ8-" +
-            "qOE8ThqotokMcuftrX2Gh4yPp7HeltE-UNAwFwKeHpqMnlisKHE1KpEy9aHPLbmA/exec?";
+    String baseURL = "https://script.google.com/macros/s/AKfycbyYDy43vhz1-lf-" +
+            "YLuuztOhK0WCdQm5o5G2aNcx85MQA5M-300X2P3xl6L0QGJYyH0mnQ/exec?";
+    ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+
 
     ActivityResultLauncher<Intent> activityResultLauncher =
             registerForActivityResult(
@@ -93,6 +101,12 @@ public class MainActivity extends AppCompatActivity {
                             int result = activityResult.getResultCode();
                             Intent data = activityResult.getData();
                             totalsc.setText("");
+                            refresh.setEnabled(false);
+                            r2.setText("");
+                            r3.setText("");
+                            r4.setText("");
+                            r5.setText("");
+                            r6.setText("");
                             try {
                                 selectBooks.setText("");
                                 getBooks("Please Wait");
@@ -110,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
     @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         setTitle("Books Stock Count");
@@ -126,8 +141,19 @@ public class MainActivity extends AppCompatActivity {
         r2=findViewById(R.id.r2);
         r3=findViewById(R.id.r3);
         r4=findViewById(R.id.r4);
+        r5=findViewById(R.id.r5);
+        r6=findViewById(R.id.r6);
+        refresh = findViewById(R.id.refresh);
         books = new ArrayList<>();
         bookdetail = new ArrayList<>();
+        try {
+            getBooks("Please Wait");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        refresh.setEnabled(false);
+        getTotalStockCount();
+        clickOnRefresh();
 
 
         //addBooksToListView();
@@ -142,14 +168,7 @@ public class MainActivity extends AppCompatActivity {
         update = findViewById(R.id.update);
         quantity = findViewById(R.id.quan);
         clickOnUpdate();
-        stockcount = findViewById(R.id.cs);
         totalsc = findViewById(R.id.sc);
-        stockcount.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                getTotalStockCount();
-            }
-        });
         addRecord = findViewById(R.id.add_record);
         addRecord();
     }
@@ -186,6 +205,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void updateData() {
+        ExecutorService service = Executors.newSingleThreadExecutor();
+
+
         update.setEnabled(false);
         String url;
         progressBar.setTitle("Updating details....");
@@ -200,30 +222,36 @@ public class MainActivity extends AppCompatActivity {
                     + row + "&quantity="
                     + quantity.getText().toString() + "";
         }
-
-        StringRequest request = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+        service.execute(new Runnable() {
             @Override
-            public void onResponse(String response) {
-                progressBar.dismiss();
-                Toast.makeText(MainActivity.this, response, Toast.LENGTH_SHORT).show();
-                quantity.setText("");
-                getTotalStockCount();
-                getDetails();
+            public void run() {
+                StringRequest request = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        progressBar.dismiss();
+                        Toast.makeText(MainActivity.this, response, Toast.LENGTH_SHORT).show();
+                        quantity.setText("");
+                        getTotalStockCount();
+                        getDetails();
 
-            }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                pb.setVisibility(View.GONE);
-                Toast.makeText(MainActivity.this, error.getMessage(), Toast.LENGTH_LONG).show();
-                quantity.setText("");
-            }
-        }){@Override
-        public RetryPolicy getRetryPolicy(){
-            return new DefaultRetryPolicy(10000,0,0);
-        }};
+                    }
+                }, new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        pb.setVisibility(View.GONE);
+                        Toast.makeText(MainActivity.this, error.getMessage(), Toast.LENGTH_LONG).show();
+                        quantity.setText("");
+                    }
+                }){@Override
+                public RetryPolicy getRetryPolicy(){
+                    return new DefaultRetryPolicy(10000,0,0);
+                }};
 
-        mQueue.add(request);
+                mQueue.add(request);
+            }
+        });
+
+service.shutdown();
 
     }
 
@@ -316,22 +344,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void clickOnUpdate() {
+
         update.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (quantity.getText().toString().equals("") || (!purchase.isChecked() && !sale.isChecked()) || selectBooks.getText().toString().equals("")) {
-                    if (quantity.getText().toString().equals(""))
-                        Toast.makeText(MainActivity.this, "Please add a Quantity ",
-                                Toast.LENGTH_LONG).show();
 
-                    if (selectBooks.getText().toString().equals(""))
-                        Toast.makeText(MainActivity.this,
-                                "Please select a Book", Toast.LENGTH_LONG).show();
-                } else {
-                    updateData();
+                    if (quantity.getText().toString().equals("") || (!purchase.isChecked() && !sale.isChecked()) || selectBooks.getText().toString().equals("")) {
+                        if (quantity.getText().toString().equals(""))
+                            Toast.makeText(MainActivity.this, "Please add a Quantity ",
+                                    Toast.LENGTH_LONG).show();
+
+                        if (selectBooks.getText().toString().equals(""))
+                            Toast.makeText(MainActivity.this,
+                                    "Please select a Book", Toast.LENGTH_LONG).show();
+                    } else {
+                        updateData();
+                    }
                 }
-            }
+
         });
+
     }
 
     public void addRecord(){
@@ -379,7 +411,11 @@ public class MainActivity extends AppCompatActivity {
                         r2.setText(bookdetail.get(1));
                         r3.setText(bookdetail.get(2));
                         r4.setText(bookdetail.get(3));
+                        r5.setText(bookdetail.get(4));
+                        r6.setText(bookdetail.get(5));
+
                         progressBar.dismiss();
+                        refresh.setEnabled(true);
                     }
                 }, new Response.ErrorListener() {
             @Override
@@ -423,6 +459,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 selectBooks.setText("");
+                r2.setText("");
+                r3.setText("");
+                r4.setText("");
+                r5.setText("");
+                r6.setText("");
 getTotalTypeOfBooks();
 
 
@@ -466,7 +507,7 @@ getTotalTypeOfBooks();
         dialog = new Dialog(MainActivity.this);
         dialog.setContentView(R.layout.dialog_searchable_spinner);
 
-        dialog.getWindow().setLayout(650, 800);
+        dialog.getWindow().setLayout(2000, 3000);
         dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         dialog.show();
         // Initialize and assign variable
@@ -542,6 +583,19 @@ getTotalTypeOfBooks();
         mQueue.add(request);
     }
 
+public void clickOnRefresh(){
+        refresh.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (selectBooks.getText().toString().equals("")){
+                    Toast.makeText(MainActivity.this,
+                            "Please select a Book", Toast.LENGTH_LONG).show();
+            } else {
+                    getDetails();
+            }
 
+            }
+        });
+}
 
 }

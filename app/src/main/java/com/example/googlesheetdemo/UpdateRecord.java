@@ -55,13 +55,6 @@ public class UpdateRecord extends AppCompatActivity {
         setContentView(R.layout.activity_update_record);
         setTitle("Add Books");
         books = new ArrayList<String>();
-        pb = findViewById(R.id.Loading);
-        try {
-            getB();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
         quan = findViewById(R.id.quan);
         price = findViewById(R.id.rate);
         name = findViewById(R.id.book_name);
@@ -69,47 +62,12 @@ public class UpdateRecord extends AppCompatActivity {
         add.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (quan.getText().toString().equals("") || price.getText().toString().equals("")
-                        || name.getText().toString().equals("")) {
-                    Toast.makeText(UpdateRecord.this, "All 3 fields are required",
-                            Toast.LENGTH_LONG).show();
-                } else if (books.contains(name.getText().toString())) {
-                    Toast.makeText(UpdateRecord.this, "Book already exist",
-                            Toast.LENGTH_LONG).show();
-                    add.setEnabled(true);
-                } else {
-                    add.setEnabled(false);
-                    String bName = "&bookName=" + name.getText().toString();
-                    String quantity = "&quantity=" + quan.getText();
-                    String rate = "&price=" + price.getText().toString();
-                    String action = "action=create";
-                    String url = baseURL + action + bName + rate + quantity;
-
-
-                    pb.setVisibility(View.VISIBLE);
-                    StringRequest request = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
-                        @Override
-                        public void onResponse(String response) {
-                            pb.setVisibility(View.GONE);
-                            Toast.makeText(UpdateRecord.this, response, Toast.LENGTH_LONG).show();
-                            books.add(name.getText().toString());
-                            add.setEnabled(true);
-                        }
-                    }, new Response.ErrorListener() {
-                        @Override
-                        public void onErrorResponse(VolleyError error) {
-                            pb.setVisibility(View.GONE);
-                            Toast.makeText(UpdateRecord.this, error.getMessage(), Toast.LENGTH_LONG).show();
-                        }
-                    })
-                    {@Override
-                        public RetryPolicy getRetryPolicy(){
-                        return new DefaultRetryPolicy(10000,0,0);
-                    }};
-                    mQueue = Volley.newRequestQueue(UpdateRecord.this);
-                    mQueue.add(request);
+                try {
+                    pb = findViewById(R.id.Loading);
+                    getB();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
-
             }
         });
     }
@@ -131,6 +89,7 @@ public class UpdateRecord extends AppCompatActivity {
                                 if (!books.contains(jsonArray.getString(i)))
                                     books.add(jsonArray.getString(i));
                             }
+                            addRecord();
                         } catch (JSONException e) {
                             throw new RuntimeException(e);
                         }
@@ -144,6 +103,51 @@ public class UpdateRecord extends AppCompatActivity {
         mQueue.add(request1);
 
     }
+
+    public void addRecord(){
+        if (quan.getText().toString().equals("") || price.getText().toString().equals("")
+                || name.getText().toString().equals("")) {
+            Toast.makeText(UpdateRecord.this, "All 3 fields are required",
+                    Toast.LENGTH_LONG).show();
+        } else if (books.contains(name.getText().toString())) {
+            Toast.makeText(UpdateRecord.this, "Book already exist",
+                    Toast.LENGTH_LONG).show();
+            add.setEnabled(true);
+        } else {
+            add.setEnabled(false);
+            String bName = "&bookName=" + name.getText().toString();
+            String quantity = "&quantity=" + quan.getText();
+            String rate = "&price=" + price.getText().toString();
+            String action = "action=create";
+            String url = baseURL + action + bName + rate + quantity;
+
+
+            pb.setVisibility(View.VISIBLE);
+            StringRequest request = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+                    pb.setVisibility(View.GONE);
+                    Toast.makeText(UpdateRecord.this, response, Toast.LENGTH_LONG).show();
+                    books.add(name.getText().toString());
+                    add.setEnabled(true);
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    pb.setVisibility(View.GONE);
+                    Toast.makeText(UpdateRecord.this, error.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            })
+            {@Override
+            public RetryPolicy getRetryPolicy(){
+                return new DefaultRetryPolicy(10000,0,0);
+            }};
+            mQueue = Volley.newRequestQueue(UpdateRecord.this);
+            mQueue.add(request);
+        }
+
+    }
+
 
 
 }
