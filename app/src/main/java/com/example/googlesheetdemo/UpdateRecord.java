@@ -45,8 +45,8 @@ public class UpdateRecord extends AppCompatActivity {
     Button add;
     ProgressBar pb;
     ArrayList<String> books;
-    String baseURL = "https://script.google.com/macros/s/AKfycbwJ8-qOE8ThqotokMcuftrX2Gh4yPp7HeltE-" +
-            "UNAwFwKeHpqMnlisKHE1KpEy9aHPLbmA/exec?";
+    String baseURL = "https://script.google.com/macros/s/AKfycbyzil6_ziR41mXL6iSAY-" +
+            "Pfw6kuutwkHFLo4Cbsql2zXTuoSPLc58kPi45F4_jthjr6Hg/exec?";
     private RequestQueue mQueue;
 
     @Override

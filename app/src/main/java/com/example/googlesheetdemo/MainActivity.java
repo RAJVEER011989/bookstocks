@@ -12,12 +12,15 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Environment;
 import android.text.Editable;
@@ -73,8 +76,8 @@ public class MainActivity extends AppCompatActivity {
     TextView r4;
     TextView r5;
     TextView r6;
-    Button viewRecord;
     Button refresh;
+    Button countStock;
     RadioButton purchase;
     RadioButton sale;
     Button update;
@@ -86,8 +89,9 @@ public class MainActivity extends AppCompatActivity {
     static int  count = 0 ;
     Integer totalTypesOfBooks;
     TextView totalsc;
-    String baseURL = "https://script.google.com/macros/s/AKfycbyYDy43vhz1-lf-" +
-            "YLuuztOhK0WCdQm5o5G2aNcx85MQA5M-300X2P3xl6L0QGJYyH0mnQ/exec?";
+    boolean isConnected;
+    String baseURL = "https://script.google.com/macros/s/AKfycbz2UMmx_R4Z7LMFNEwX_-" +
+            "5T0IfIpJhL2zs4ChWQ3TXRTC28gSky1E1DJfX4OD-aVqKTMA/exec?";
     ExecutorService executorService = Executors.newSingleThreadExecutor();
 
 
@@ -143,34 +147,35 @@ public class MainActivity extends AppCompatActivity {
         r4=findViewById(R.id.r4);
         r5=findViewById(R.id.r5);
         r6=findViewById(R.id.r6);
+        countStock = findViewById(R.id.cs);
         refresh = findViewById(R.id.refresh);
         books = new ArrayList<>();
         bookdetail = new ArrayList<>();
-        try {
-            getBooks("Please Wait");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        refresh.setEnabled(false);
-        getTotalStockCount();
-        clickOnRefresh();
+        if(!isConnected()){
+            alertPopup();
+        }else {
+            refresh.setEnabled(false);
+            getTotalStockCount();
+            clickOnRefresh();
 
 
-        //addBooksToListView();
-        addBooksToListView1();
-        //getTotalTypeOfBooks();
-        //getTotalTypeOfBooks();
+            //addBooksToListView();
+            addBooksToListView1();
+            //getTotalTypeOfBooks();
+            //getTotalTypeOfBooks();
         /*try {
             getBookdetail();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }*/
-        update = findViewById(R.id.update);
-        quantity = findViewById(R.id.quan);
-        clickOnUpdate();
-        totalsc = findViewById(R.id.sc);
-        addRecord = findViewById(R.id.add_record);
-        addRecord();
+            update = findViewById(R.id.update);
+            quantity = findViewById(R.id.quan);
+            clickOnUpdate();
+            totalsc = findViewById(R.id.sc);
+            addRecord = findViewById(R.id.add_record);
+            addRecord();
+            clickOnStockCount();
+        }
     }
 
     public void getBooks(String progressB) throws IOException {
@@ -198,7 +203,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onErrorResponse(VolleyError error) {
                 progressBar.dismiss();
-                alertPopup(error.getMessage());
+                alertPopup();
             }
         });
         mQueue.add(request);
@@ -348,6 +353,9 @@ service.shutdown();
         update.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(!isConnected()){
+                    alertPopup();
+                }
 
                     if (quantity.getText().toString().equals("") || (!purchase.isChecked() && !sale.isChecked()) || selectBooks.getText().toString().equals("")) {
                         if (quantity.getText().toString().equals(""))
@@ -370,8 +378,12 @@ service.shutdown();
         addRecord.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent addBookIntent = new Intent(MainActivity.this,UpdateRecord.class);
-                activityResultLauncher.launch(addBookIntent);
+                if(isConnected()) {
+                    Intent addBookIntent = new Intent(MainActivity.this, UpdateRecord.class);
+                    activityResultLauncher.launch(addBookIntent);
+                }else {
+                    alertPopup();
+                }
             }
         });
     }
@@ -413,6 +425,7 @@ service.shutdown();
                         r4.setText(bookdetail.get(3));
                         r5.setText(bookdetail.get(4));
                         r6.setText(bookdetail.get(5));
+                        getTotalStockCount();
 
                         progressBar.dismiss();
                         refresh.setEnabled(true);
@@ -429,12 +442,12 @@ service.shutdown();
 
     }
 
-    public void alertPopup(String message){
+    public void alertPopup(){
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
 
         // Set the message show for the Alert time
 
-        builder.setMessage("Please check your Internet Connection turn it on and press Ok");
+        builder.setMessage("Please check your Internet Connection");
 
         // Set Alert Title
         builder.setTitle("Alert !");
@@ -443,9 +456,9 @@ service.shutdown();
         builder.setCancelable(false);
 
         // Set the positive button with yes name Lambda OnClickListener method is use of DialogInterface interface.
-        builder.setPositiveButton("Ok", (DialogInterface.OnClickListener) (dialog, which) -> {
+        builder.setNegativeButton("Ok", (DialogInterface.OnClickListener) (dialog, which) -> {
             // When the user click yes button then app will close
-            dialog.cancel();
+            finish();
         });
 
         // Create the Alert dialog
@@ -458,15 +471,19 @@ service.shutdown();
         selectBooks.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                selectBooks.setText("");
-                r2.setText("");
-                r3.setText("");
-                r4.setText("");
-                r5.setText("");
-                r6.setText("");
-getTotalTypeOfBooks();
+                if (isConnected()) {
+                    selectBooks.setText("");
+                    r2.setText("");
+                    r3.setText("");
+                    r4.setText("");
+                    r5.setText("");
+                    r6.setText("");
+                    getTotalTypeOfBooks();
 
 
+                }else {
+                    alertPopup();
+                }
             }
         });
         }
@@ -507,7 +524,7 @@ getTotalTypeOfBooks();
         dialog = new Dialog(MainActivity.this);
         dialog.setContentView(R.layout.dialog_searchable_spinner);
 
-        dialog.getWindow().setLayout(2000, 3000);
+        dialog.getWindow().setLayout(1000, 1000);
         dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         dialog.show();
         // Initialize and assign variable
@@ -577,7 +594,7 @@ getTotalTypeOfBooks();
             @Override
             public void onErrorResponse(VolleyError error) {
                 progressBar.dismiss();
-                alertPopup(error.getMessage());
+                alertPopup();
             }
         });
         mQueue.add(request);
@@ -587,15 +604,39 @@ public void clickOnRefresh(){
         refresh.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (selectBooks.getText().toString().equals("")){
+                if (!isConnected()) {
+                    alertPopup();
+                }else{
+                if (selectBooks.getText().toString().equals("")) {
                     Toast.makeText(MainActivity.this,
                             "Please select a Book", Toast.LENGTH_LONG).show();
-            } else {
+                } else {
                     getDetails();
+                }
             }
 
             }
         });
 }
+    public boolean isConnected(){
+        ConnectivityManager cm = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+        return isConnected;
+    }
+
+    public void clickOnStockCount(){
+        countStock.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(!isConnected()){
+                    alertPopup();
+                } else {
+                    getTotalStockCount();
+                }
+
+            }
+        });
+    }
 
 }
